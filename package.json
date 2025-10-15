@@ -11,6 +11,8 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.52.0",
     "@google/genai": "^1.20.0",
+    "cloudinary-core": "^2.14.0",
+    "cloudinary-react": "^1.8.1",
     "convex": "^1.28.0",
     "lucide-react": "^0.417.0",
     "react": "^19.1.1",
