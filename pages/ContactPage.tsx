@@ -1,15 +1,45 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useToast } from '../contexts/ToastContext';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Send } from 'lucide-react';
 
 export const ContactPage: React.FC = () => {
   const { addToast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     const form = e.currentTarget;
-    addToast('Thank you for your message!', 'success');
-    form.reset();
+    const formData = new FormData(form);
+    
+    const contactData = {
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      message: formData.get('message') as string,
+    };
+    
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactData),
+      });
+
+      if (response.ok) {
+        addToast('Message sent successfully! We\'ll get back to you soon.', 'success');
+        form.reset();
+      } else {
+        throw new Error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      addToast('Failed to send message. Please email us directly at support@ai-landscapedesigner.com', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClasses = "w-full h-11 px-4 py-2 text-sm text-slate-800 bg-slate-100/80 border border-transparent rounded-lg outline-none transition-all duration-200 focus:border-slate-300 focus:ring-2 focus:ring-slate-200 placeholder:text-slate-400";
@@ -49,14 +79,11 @@ export const ContactPage: React.FC = () => {
             Have a question or feedback? Fill out the form below and we'll get back to you as soon as possible.
           </p>
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-8">
+          <div className="mt-8">
             <ContactInfoItem icon={<Mail className="h-5 w-5 text-slate-600" />} title="Email Us">
               <a href="mailto:support@ai-landscapedesigner.com" className="text-orange-500 hover:underline">
                 support@ai-landscapedesigner.com
               </a>
-            </ContactInfoItem>
-            <ContactInfoItem icon={<Phone className="h-5 w-5 text-slate-600" />} title="Call Us">
-              <p>+1 (555) 123-4567</p>
             </ContactInfoItem>
           </div>
           
@@ -77,8 +104,22 @@ export const ContactPage: React.FC = () => {
               <textarea name="message" id="message" rows={4} required className={`${inputClasses} h-auto`} placeholder="Your message..."></textarea>
             </div>
             <div>
-              <button type="submit" className="w-full h-11 flex items-center justify-center bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                Send Message
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full h-11 flex items-center justify-center bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Message
+                  </>
+                )}
               </button>
             </div>
           </form>
