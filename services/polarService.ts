@@ -12,13 +12,17 @@ export const createCheckoutSession = async (
 ): Promise<string> => {
   try {
     const baseUrl = window.location.origin;
-    const successUrl = `${baseUrl}/?page=success&session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${baseUrl}/?page=success&session_id={CHECKOUT_SESSION_ID}&plan=${planName}`;
     const cancelUrl = `${baseUrl}/?page=pricing`;
 
-    // For sandbox testing, we'll create a simple checkout
-    // In production, you'd use actual product/price IDs from Polar
+    // Create checkout with products array structure
     const response = await polar.checkouts.create({
-      productPriceId: 'test_price_id', // Replace with actual price ID
+      products: [
+        {
+          priceId: 'test_price_id', // Replace with actual price ID from Polar
+          quantity: 1
+        }
+      ],
       successUrl,
       customerEmail: userEmail,
       metadata: {
