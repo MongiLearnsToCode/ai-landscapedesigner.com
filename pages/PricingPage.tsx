@@ -98,6 +98,7 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
     try {
       const checkoutUrl = await createCheckoutSession(
         planName,
+        billingCycle,
         user.id,
         user.primaryEmailAddress?.emailAddress || ''
       );

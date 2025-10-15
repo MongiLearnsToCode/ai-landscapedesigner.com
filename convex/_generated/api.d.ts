@@ -9,6 +9,7 @@
  */
 
 import type * as projects from "../projects.js";
+import type * as subscriptions from "../subscriptions.js";
 import type * as usage from "../usage.js";
 
 import type {
@@ -27,6 +28,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   projects: typeof projects;
+  subscriptions: typeof subscriptions;
   usage: typeof usage;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

@@ -5,8 +5,20 @@ const polar = new Polar({
   server: 'sandbox'
 });
 
+const getPriceId = (planName: string, billingCycle: 'monthly' | 'annual'): string => {
+  const envKey = `VITE_POLAR_${planName.toUpperCase()}_${billingCycle.toUpperCase()}_PRICE_ID`;
+  const priceId = import.meta.env[envKey];
+  
+  if (!priceId) {
+    throw new Error(`Price ID not found for ${planName} ${billingCycle}. Check environment variable: ${envKey}`);
+  }
+  
+  return priceId;
+};
+
 export const createCheckoutSession = async (
   planName: string,
+  billingCycle: 'monthly' | 'annual',
   userId: string,
   userEmail: string
 ): Promise<string> => {
@@ -15,11 +27,12 @@ export const createCheckoutSession = async (
     const successUrl = `${baseUrl}/?page=success&session_id={CHECKOUT_SESSION_ID}&plan=${planName}`;
     const cancelUrl = `${baseUrl}/?page=pricing`;
 
-    // Create checkout with products array structure
+    const priceId = getPriceId(planName, billingCycle);
+
     const response = await polar.checkouts.create({
       products: [
         {
-          priceId: 'test_price_id', // Replace with actual price ID from Polar
+          priceId,
           quantity: 1
         }
       ],
@@ -28,6 +41,7 @@ export const createCheckoutSession = async (
       metadata: {
         userId,
         planName,
+        billingCycle,
         source: 'ai-landscape-designer'
       }
     });
@@ -44,8 +58,6 @@ export const handleSuccessfulPayment = async (
   userId: string,
   planName: string
 ): Promise<void> => {
-  // In production, this would be handled by webhooks
-  // For sandbox testing, we'll simulate the subscription creation
   const { ConvexReactClient } = await import('convex/react');
   const { api } = await import('../convex/_generated/api');
   
@@ -59,7 +71,6 @@ export const handleSuccessfulPayment = async (
     currentPeriodEnd: Date.now() + (30 * 24 * 60 * 60 * 1000) // 30 days
   });
 
-  // Update usage tracking
   await convex.mutation(api.usage.updateSubscriptionStatus, {
     userId,
     isSubscribed: true
