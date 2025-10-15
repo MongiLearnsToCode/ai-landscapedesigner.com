@@ -20,6 +20,7 @@ import { CustomizationModal } from '../components/CustomizationModal';
 import { DensitySelector } from '../components/DensitySelector';
 import { DrawingModal } from '../components/DrawingModal';
 import { Layout } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 // Define the shape of the state we want to persist
 interface DesignerState {
@@ -65,7 +66,7 @@ const getInitialState = (): DesignerState => {
 
 export const DesignerPage: React.FC = () => {
   const { user } = useUser();
-  const { itemToLoad, onItemLoaded } = useApp();
+  const { itemToLoad, onItemLoaded, shouldTriggerConfetti, onConfettiTriggered } = useApp();
   const { saveNewRedesign, history, viewFromHistory } = useHistory();
   const { addToast } = useToast();
 
@@ -132,6 +133,25 @@ export const DesignerPage: React.FC = () => {
       onItemLoaded();
     }
   }, [itemToLoad, onItemLoaded]);
+
+  // Trigger confetti when arriving from success page
+  useEffect(() => {
+    if (shouldTriggerConfetti) {
+      const triggerConfetti = () => {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      };
+      
+      // Delay to ensure page is rendered
+      const timer = setTimeout(triggerConfetti, 300);
+      onConfettiTriggered();
+      
+      return () => clearTimeout(timer);
+    }
+  }, [shouldTriggerConfetti, onConfettiTriggered]);
 
   const updateState = (updates: Partial<DesignerState>) => {
     setDesignerState(prevState => ({ ...prevState, ...updates }));

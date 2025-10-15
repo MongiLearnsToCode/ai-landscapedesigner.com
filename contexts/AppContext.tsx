@@ -5,7 +5,7 @@ export type Page = 'main' | 'history' | 'pricing' | 'contact' | 'terms' | 'priva
 
 interface AppContextType {
   page: Page;
-  navigateTo: (page: Page) => void;
+  navigateTo: (page: Page, options?: { triggerConfetti?: boolean }) => void;
   isModalOpen: boolean;
   modalImage: string | null;
   openModal: (imageUrl: string) => void;
@@ -13,6 +13,8 @@ interface AppContextType {
   itemToLoad: HydratedHistoryItem | null;
   onItemLoaded: () => void;
   loadItem: (item: HydratedHistoryItem) => void;
+  shouldTriggerConfetti: boolean;
+  onConfettiTriggered: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -22,10 +24,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [itemToLoad, setItemToLoad] = useState<HydratedHistoryItem | null>(null);
+  const [shouldTriggerConfetti, setShouldTriggerConfetti] = useState<boolean>(false);
   
-  const navigateTo = (page: Page) => {
+  const navigateTo = (page: Page, options?: { triggerConfetti?: boolean }) => {
     setPage(page);
+    if (options?.triggerConfetti) {
+      setShouldTriggerConfetti(true);
+    }
     window.scrollTo(0, 0);
+  };
+
+  const onConfettiTriggered = () => {
+    setShouldTriggerConfetti(false);
   };
 
   const openModal = (imageUrl: string) => {
@@ -57,6 +67,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     itemToLoad,
     onItemLoaded,
     loadItem,
+    shouldTriggerConfetti,
+    onConfettiTriggered,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
