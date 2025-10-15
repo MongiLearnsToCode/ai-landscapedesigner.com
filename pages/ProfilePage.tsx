@@ -51,7 +51,9 @@ export const ProfilePage: React.FC = () => {
       </div>
       
       <Section title="Profile & Security">
-        <UserProfile />
+        <div className="flex justify-center">
+          <UserProfile />
+        </div>
       </Section>
       
       <SubscriptionContent />
