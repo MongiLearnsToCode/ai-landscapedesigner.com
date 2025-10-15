@@ -30,13 +30,33 @@ export default defineSchema({
 
   usageTracking: defineTable({
     userId: v.string(), // Clerk user ID or anonymous session ID
+    deviceId: v.string(), // Device fingerprint
+    deviceFingerprint: v.string(), // Extended fingerprint for verification
     isAuthenticated: v.boolean(),
     redesignCount: v.number(),
     lastRedesignAt: v.optional(v.number()),
     isSubscribed: v.optional(v.boolean()),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number()
-  }).index("by_user", ["userId"]),
+  }).index("by_user", ["userId"])
+    .index("by_device", ["deviceId"])
+    .index("by_fingerprint", ["deviceFingerprint"]),
+
+  deviceSessions: defineTable({
+    deviceId: v.string(),
+    deviceFingerprint: v.string(),
+    userId: v.string(),
+    isAuthenticated: v.boolean(),
+    redesignCount: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    lastSeenAt: v.number(),
+    createdAt: v.number()
+  }).index("by_device", ["deviceId"])
+    .index("by_fingerprint", ["deviceFingerprint"])
+    .index("by_device_fingerprint", ["deviceId", "deviceFingerprint"]),
 
   rateLimiting: defineTable({
     userId: v.string(),

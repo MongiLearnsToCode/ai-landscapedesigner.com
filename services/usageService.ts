@@ -1,5 +1,6 @@
 import { ConvexReactClient } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { getDeviceId, getExtendedFingerprint } from "./fingerprintService";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
 
@@ -17,6 +18,16 @@ export const getUserId = (clerkUserId?: string): string => {
   return clerkUserId || getAnonymousUserId();
 };
 
+// Get client info for server tracking
+const getClientInfo = () => {
+  return {
+    deviceId: getDeviceId(),
+    deviceFingerprint: getExtendedFingerprint(),
+    ipAddress: undefined, // Will be detected server-side if needed
+    userAgent: navigator.userAgent
+  };
+};
+
 export interface UsageStatus {
   canRedesign: boolean;
   redesignCount: number;
@@ -30,11 +41,13 @@ export const checkRedesignLimit = async (
 ): Promise<UsageStatus> => {
   const userId = getUserId(clerkUserId);
   const isAuthenticated = !!clerkUserId;
+  const clientInfo = getClientInfo();
 
   return await convex.query(api.usage.checkRedesignLimit, {
     userId,
     isAuthenticated,
-    isSubscribed
+    isSubscribed,
+    ...clientInfo
   });
 };
 
@@ -56,11 +69,13 @@ export const incrementRedesignCount = async (
 ): Promise<void> => {
   const userId = getUserId(clerkUserId);
   const isAuthenticated = !!clerkUserId;
+  const clientInfo = getClientInfo();
 
   await convex.mutation(api.usage.incrementRedesignCount, {
     userId,
     isAuthenticated,
-    isSubscribed
+    isSubscribed,
+    ...clientInfo
   });
 };
 

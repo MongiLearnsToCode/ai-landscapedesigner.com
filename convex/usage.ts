@@ -8,33 +8,91 @@ const MAX_ATTEMPTS_PER_WINDOW = 5;
 export const checkRedesignLimit = query({
   args: { 
     userId: v.string(),
+    deviceId: v.string(),
+    deviceFingerprint: v.string(),
     isAuthenticated: v.boolean(),
-    isSubscribed: v.optional(v.boolean())
+    isSubscribed: v.optional(v.boolean()),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string())
   },
   handler: async (ctx, args) => {
-    const usage = await ctx.db
-      .query("usageTracking")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
+    const now = Date.now();
+    
+    // For authenticated users, check their usage
+    if (args.isAuthenticated) {
+      const usage = await ctx.db
+        .query("usageTracking")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .first();
 
-    if (!usage) {
-      return {
-        canRedesign: true,
-        redesignCount: 0,
-        remainingRedesigns: FREE_REDESIGN_LIMIT,
-        isSubscribed: args.isSubscribed || false
-      };
+      if (usage) {
+        const isSubscribed = usage.isSubscribed || args.isSubscribed || false;
+        const canRedesign = isSubscribed || usage.redesignCount < FREE_REDESIGN_LIMIT;
+        const remainingRedesigns = isSubscribed ? -1 : Math.max(0, FREE_REDESIGN_LIMIT - usage.redesignCount);
+
+        return {
+          canRedesign,
+          redesignCount: usage.redesignCount,
+          remainingRedesigns,
+          isSubscribed
+        };
+      }
     }
 
-    const isSubscribed = usage.isSubscribed || args.isSubscribed || false;
-    const canRedesign = isSubscribed || usage.redesignCount < FREE_REDESIGN_LIMIT;
-    const remainingRedesigns = isSubscribed ? -1 : Math.max(0, FREE_REDESIGN_LIMIT - usage.redesignCount);
+    // For anonymous users, check device-based limits
+    // First check by device ID
+    let deviceSession = await ctx.db
+      .query("deviceSessions")
+      .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
+      .first();
+
+    // If no device session, check by fingerprint (in case device ID was cleared)
+    if (!deviceSession) {
+      deviceSession = await ctx.db
+        .query("deviceSessions")
+        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
+        .first();
+    }
+
+    // Check for similar fingerprints (potential evasion attempts)
+    const similarSessions = await ctx.db
+      .query("deviceSessions")
+      .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
+      .collect();
+
+    // Aggregate redesign count from all similar sessions
+    const totalRedesigns = similarSessions.reduce((sum, session) => sum + session.redesignCount, 0);
+
+    const canRedesign = totalRedesigns < FREE_REDESIGN_LIMIT;
+    const remainingRedesigns = Math.max(0, FREE_REDESIGN_LIMIT - totalRedesigns);
+
+    // Update or create device session
+    if (deviceSession) {
+      await ctx.db.patch(deviceSession._id, {
+        lastSeenAt: now,
+        deviceId: args.deviceId, // Update in case it changed
+        ipAddress: args.ipAddress,
+        userAgent: args.userAgent
+      });
+    } else {
+      await ctx.db.insert("deviceSessions", {
+        deviceId: args.deviceId,
+        deviceFingerprint: args.deviceFingerprint,
+        userId: args.userId,
+        isAuthenticated: args.isAuthenticated,
+        redesignCount: totalRedesigns,
+        ipAddress: args.ipAddress,
+        userAgent: args.userAgent,
+        lastSeenAt: now,
+        createdAt: now
+      });
+    }
 
     return {
       canRedesign,
-      redesignCount: usage.redesignCount,
+      redesignCount: totalRedesigns,
       remainingRedesigns,
-      isSubscribed
+      isSubscribed: false
     };
   },
 });
@@ -72,42 +130,93 @@ export const checkRateLimit = query({
 export const incrementRedesignCount = mutation({
   args: { 
     userId: v.string(),
+    deviceId: v.string(),
+    deviceFingerprint: v.string(),
     isAuthenticated: v.boolean(),
-    isSubscribed: v.optional(v.boolean())
+    isSubscribed: v.optional(v.boolean()),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string())
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     
-    // Check current usage
-    const usage = await ctx.db
-      .query("usageTracking")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .first();
+    if (args.isAuthenticated) {
+      // Handle authenticated users
+      const usage = await ctx.db
+        .query("usageTracking")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .first();
 
-    if (usage) {
-      const isSubscribed = usage.isSubscribed || args.isSubscribed || false;
+      if (usage) {
+        const isSubscribed = usage.isSubscribed || args.isSubscribed || false;
+        
+        if (!isSubscribed && usage.redesignCount >= FREE_REDESIGN_LIMIT) {
+          throw new Error("Redesign limit reached. Please subscribe to continue.");
+        }
+
+        await ctx.db.patch(usage._id, {
+          redesignCount: usage.redesignCount + 1,
+          lastRedesignAt: now,
+          updatedAt: now,
+          deviceId: args.deviceId,
+          deviceFingerprint: args.deviceFingerprint,
+          ipAddress: args.ipAddress,
+          userAgent: args.userAgent
+        });
+      } else {
+        await ctx.db.insert("usageTracking", {
+          userId: args.userId,
+          deviceId: args.deviceId,
+          deviceFingerprint: args.deviceFingerprint,
+          isAuthenticated: args.isAuthenticated,
+          redesignCount: 1,
+          lastRedesignAt: now,
+          isSubscribed: args.isSubscribed || false,
+          ipAddress: args.ipAddress,
+          userAgent: args.userAgent,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+    } else {
+      // Handle anonymous users with device tracking
+      const similarSessions = await ctx.db
+        .query("deviceSessions")
+        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
+        .collect();
+
+      const totalRedesigns = similarSessions.reduce((sum, session) => sum + session.redesignCount, 0);
       
-      // Prevent increment if limit reached and not subscribed
-      if (!isSubscribed && usage.redesignCount >= FREE_REDESIGN_LIMIT) {
-        throw new Error("Redesign limit reached. Please subscribe to continue.");
+      if (totalRedesigns >= FREE_REDESIGN_LIMIT) {
+        throw new Error("Redesign limit reached. Please sign up to continue.");
       }
 
-      await ctx.db.patch(usage._id, {
-        redesignCount: usage.redesignCount + 1,
-        lastRedesignAt: now,
-        updatedAt: now,
-        isSubscribed: args.isSubscribed || usage.isSubscribed
-      });
-    } else {
-      await ctx.db.insert("usageTracking", {
-        userId: args.userId,
-        isAuthenticated: args.isAuthenticated,
-        redesignCount: 1,
-        lastRedesignAt: now,
-        isSubscribed: args.isSubscribed || false,
-        createdAt: now,
-        updatedAt: now
-      });
+      // Find or create device session
+      let deviceSession = await ctx.db
+        .query("deviceSessions")
+        .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
+        .first();
+
+      if (deviceSession) {
+        await ctx.db.patch(deviceSession._id, {
+          redesignCount: deviceSession.redesignCount + 1,
+          lastSeenAt: now,
+          ipAddress: args.ipAddress,
+          userAgent: args.userAgent
+        });
+      } else {
+        await ctx.db.insert("deviceSessions", {
+          deviceId: args.deviceId,
+          deviceFingerprint: args.deviceFingerprint,
+          userId: args.userId,
+          isAuthenticated: false,
+          redesignCount: 1,
+          ipAddress: args.ipAddress,
+          userAgent: args.userAgent,
+          lastSeenAt: now,
+          createdAt: now
+        });
+      }
     }
 
     return { success: true };
@@ -176,6 +285,8 @@ export const updateSubscriptionStatus = mutation({
     } else {
       await ctx.db.insert("usageTracking", {
         userId: args.userId,
+        deviceId: "",
+        deviceFingerprint: "",
         isAuthenticated: true,
         redesignCount: 0,
         isSubscribed: args.isSubscribed,
