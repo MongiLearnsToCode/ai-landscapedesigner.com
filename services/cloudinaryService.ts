@@ -44,3 +44,29 @@ export const getOptimizedImageUrl = (publicId: string, options: {
 export const getThumbnailUrl = (publicId: string) => {
   return getOptimizedImageUrl(publicId, { width: 300, height: 200 });
 };
+
+export const convertImageToBase64 = async (imageUrl: string): Promise<{ base64: string; mimeType: string }> => {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error('Failed to fetch image');
+    }
+    
+    const blob = await response.blob();
+    const mimeType = blob.type;
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
+        resolve({ base64, mimeType });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error converting image to base64:', error);
+    throw new Error('Failed to convert image to base64');
+  }
+};

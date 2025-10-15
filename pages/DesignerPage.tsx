@@ -4,6 +4,7 @@ import { StyleSelector } from '../components/StyleSelector';
 import { ClimateSelector } from '../components/ClimateSelector';
 import { ResultDisplay } from '../components/ResultDisplay';
 import { redesignOutdoorSpace, refineRedesign, getElementImage } from '../services/geminiService';
+import { convertImageToBase64 } from '../services/cloudinaryService';
 import { LANDSCAPING_STYLES } from '../constants';
 import type { LandscapingStyle, ImageFile, DesignCatalog, RefinementModifications, RedesignDensity, Feature } from '../types';
 import { useApp } from '../contexts/AppContext';
@@ -147,9 +148,19 @@ export const DesignerPage: React.FC = () => {
     setDesignCatalog(null);
 
     try {
+      // Convert Cloudinary URL to base64 if needed
+      let imageBase64 = originalImage.base64;
+      let imageMimeType = originalImage.type;
+      
+      if (originalImage.cloudinaryUrl && !originalImage.base64) {
+        const converted = await convertImageToBase64(originalImage.cloudinaryUrl);
+        imageBase64 = converted.base64;
+        imageMimeType = converted.mimeType;
+      }
+
       const result = await redesignOutdoorSpace(
-        originalImage.base64,
-        originalImage.type,
+        imageBase64,
+        imageMimeType,
         selectedStyles,
         allowStructuralChanges,
         climateZone,
