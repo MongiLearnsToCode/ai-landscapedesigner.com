@@ -102,7 +102,7 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({ items, onItemCli
                 onClick={() => navigateTo('pricing')}
                 className="text-orange-500 hover:text-orange-600 underline"
               >
-                Sign up and subscribe
+                {isSignedIn ? 'Subscribe' : 'Sign up and subscribe'}
               </button>{' '}
               to access your full project history
             </p>

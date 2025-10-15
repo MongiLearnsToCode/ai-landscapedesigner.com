@@ -1,5 +1,5 @@
 import React, { useState, forwardRef, useRef, useEffect, useCallback } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, SignUpButton } from '@clerk/clerk-react';
 import { useToast } from '../contexts/ToastContext';
 import { createCheckoutSession } from '../services/polarService';
 import type { Page } from '../contexts/AppContext';
@@ -78,18 +78,28 @@ const PlanCard = forwardRef<HTMLDivElement, PlanCardProps>(({ plan, price, price
 
 
 export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
   const { addToast } = useToast();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [showSignUp, setShowSignUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const popularCardRef = useRef<HTMLDivElement>(null);
 
   const [scrollState, setScrollState] = useState({ canScrollLeft: false, canScrollRight: false, isTabletPortrait: false });
+  const signUpButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Trigger SignUpButton when showSignUp is true
+  useEffect(() => {
+    if (showSignUp && signUpButtonRef.current) {
+      signUpButtonRef.current.click();
+      setShowSignUp(false);
+    }
+  }, [showSignUp]);
 
   const handleSubscribe = async (planName: string) => {
-    if (!user) {
-      addToast('Please sign in to subscribe', 'error');
+    if (!isSignedIn) {
+      setShowSignUp(true);
       return;
     }
 
@@ -313,6 +323,15 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
              {' '}to prevent abuse.
           </p>
       </div>
+
+      {/* Hidden SignUpButton for unauthenticated users */}
+      <SignUpButton mode="modal">
+        <button 
+          ref={signUpButtonRef}
+          className="hidden"
+          aria-hidden="true"
+        />
+      </SignUpButton>
     </div>
   );
 };
