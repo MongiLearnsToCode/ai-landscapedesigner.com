@@ -39,7 +39,7 @@ export const checkRedesignLimit = query({
     if (args.deviceFingerprint) {
       const similarSessions = await ctx.db
         .query("deviceSessions")
-        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
+        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint!))
         .collect();
 
       // Aggregate redesign count from all similar sessions
