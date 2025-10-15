@@ -30,12 +30,7 @@ export const createCheckoutSession = async (
     const priceId = getPriceId(planName, billingCycle);
 
     const response = await polar.checkouts.create({
-      products: [
-        {
-          priceId,
-          quantity: 1
-        }
-      ],
+      products: [priceId],
       successUrl,
       customerEmail: userEmail,
       metadata: {
