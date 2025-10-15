@@ -81,10 +81,10 @@ const ImageCard: React.FC<{ title: string; imageUrl: string; catalog: DesignCata
         }
     };
     
-    const ActionButton: React.FC<{ onClick: () => void; label: string; icon: React.ReactNode, 'aria-label': string }> = ({ onClick, label, icon, 'aria-label': ariaLabel }) => (
+    const ActionButton: React.FC<{ onClick: () => void; label: string; icon: React.ReactNode, 'aria-label': string; className?: string }> = ({ onClick, label, icon, 'aria-label': ariaLabel, className = '' }) => (
         <button
             onClick={onClick}
-            className="bg-white/90 hover:bg-white text-slate-800 font-semibold px-4 py-2 rounded-lg text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center"
+            className={`bg-white/90 hover:bg-white text-slate-800 font-semibold px-4 py-2 rounded-lg text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center ${className}`}
             aria-label={ariaLabel}
         >
             {icon}
@@ -101,7 +101,20 @@ const ImageCard: React.FC<{ title: string; imageUrl: string; catalog: DesignCata
                 <img src={imageUrl} alt={title} className="w-full h-auto block" />
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 sm:gap-4 opacity-0 group-hover:opacity-100 transition-opacity p-4 flex-wrap rounded-xl">
                     <ActionButton onClick={() => openModal(imageUrl)} label="Larger" icon={<Expand className="h-4 w-4 mr-2" />} aria-label="View larger" />
-                    {onPlanLayout && <ActionButton onClick={onPlanLayout} label="Plan Layout" icon={<LayoutIcon className="h-4 w-4 mr-2" />} aria-label="Plan layout" />}
+                    {onPlanLayout && (
+                        <div className="relative">
+                            <ActionButton 
+                                onClick={() => {}} 
+                                label="Plan Layout" 
+                                icon={<LayoutIcon className="h-4 w-4 mr-2" />} 
+                                aria-label="Plan layout (coming soon)" 
+                                className="opacity-50 cursor-not-allowed"
+                            />
+                            <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                                Coming Soon
+                            </span>
+                        </div>
+                    )}
                     {onCustomize && <ActionButton onClick={onCustomize} label="Customize" icon={<Wand className="h-4 w-4 mr-2" />} aria-label="Customize image" />}
                     {onEdit && <ActionButton onClick={onEdit} label="Edit" icon={<PenSquare className="h-4 w-4 mr-2" />} aria-label="Edit image" />}
                     <ActionButton onClick={handleDownload} label="Download" icon={<Download className="h-4 w-4 mr-2" />} aria-label="Download image" />

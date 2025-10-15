@@ -429,15 +429,15 @@ export const DesignerPage: React.FC = () => {
         <Section title="Upload Your Space">
             <ImageUploader onImageUpload={handleImageUpload} initialImage={originalImage} />
             {originalImage && (
-              <div className="mt-4">
+              <div className="mt-4 relative">
                   <button
-                      onClick={openPreDesignDrawer}
-                      className="w-full h-11 flex items-center justify-center gap-2 bg-slate-100/80 hover:bg-slate-200 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-colors border border-slate-200/80"
+                      onClick={() => {}}
+                      className="w-full h-11 flex items-center justify-center gap-2 bg-slate-100/50 text-slate-400 font-semibold py-2 px-4 rounded-lg border border-slate-200/50 cursor-not-allowed opacity-60"
+                      disabled
                   >
                       <Layout className="h-4 w-4" />
-                      {layoutOverlayImage ? 'Edit Layout Plan' : 'Plan Driveway & Paths'}
+                      Plan Driveway & Paths (Coming Soon)
                   </button>
-                  {layoutOverlayImage && <p className="text-xs text-green-600 text-center mt-2">✓ Layout plan saved.</p>}
               </div>
             )}
         </Section>

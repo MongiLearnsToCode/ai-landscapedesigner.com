@@ -1,4 +1,5 @@
 import React, { useState, useLayoutEffect, useRef } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import type { HistoryItem } from '../types';
 import { HistoryGalleryItem } from './HistoryGalleryItem';
 import { GalleryHorizontal } from 'lucide-react';
@@ -11,9 +12,14 @@ interface HistoryGalleryProps {
 
 export const HistoryGallery: React.FC<HistoryGalleryProps> = ({ items, onItemClick }) => {
   const { navigateTo } = useApp();
+  const { isSignedIn } = useUser();
   const gridRef = useRef<HTMLDivElement>(null);
   // Default to 6 to maintain existing behavior on smaller screens
   const [visibleItemCount, setVisibleItemCount] = useState(6);
+
+  // For now, assume all users need to subscribe to access full history
+  // This can be updated later to check actual subscription status
+  const hasFullAccess = false;
 
   useLayoutEffect(() => {
     const gridEl = gridRef.current;
@@ -78,12 +84,30 @@ export const HistoryGallery: React.FC<HistoryGalleryProps> = ({ items, onItemCli
             Click a design to load it, or view all your projects.
           </p>
         </div>
-        <button 
-          onClick={() => navigateTo('history')}
-          className="mt-3 sm:mt-0 px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0"
-        >
-          View All Projects
-        </button>
+        <div className="flex flex-col">
+          <button 
+            onClick={hasFullAccess ? () => navigateTo('history') : undefined}
+            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors flex-shrink-0 ${
+              hasFullAccess 
+                ? 'text-slate-700 bg-slate-100 hover:bg-slate-200' 
+                : 'text-slate-400 bg-slate-50 cursor-not-allowed opacity-60'
+            }`}
+            disabled={!hasFullAccess}
+          >
+            View All Projects
+          </button>
+          {!hasFullAccess && (
+            <p className="text-xs text-slate-500 mt-2 text-right">
+              <button 
+                onClick={() => navigateTo('pricing')}
+                className="text-orange-500 hover:text-orange-600 underline"
+              >
+                Sign up and subscribe
+              </button>{' '}
+              to access your full project history
+            </p>
+          )}
+        </div>
       </div>
       
       <div ref={gridRef} className="grid grid-cols-2 md:grid-cols-3 gap-4 flex-grow min-h-0 overflow-y-hidden">
