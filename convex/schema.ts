@@ -26,5 +26,23 @@ export default defineSchema({
     isPinned: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number()
-  }).index("by_user", ["userId"]).index("by_user_created", ["userId", "createdAt"])
+  }).index("by_user", ["userId"]).index("by_user_created", ["userId", "createdAt"]),
+
+  usageTracking: defineTable({
+    userId: v.string(), // Clerk user ID or anonymous session ID
+    isAuthenticated: v.boolean(),
+    redesignCount: v.number(),
+    lastRedesignAt: v.optional(v.number()),
+    isSubscribed: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  }).index("by_user", ["userId"]),
+
+  rateLimiting: defineTable({
+    userId: v.string(),
+    action: v.string(), // "redesign", "upload"
+    attempts: v.number(),
+    windowStart: v.number(),
+    lastAttemptAt: v.number()
+  }).index("by_user_action", ["userId", "action"])
 });

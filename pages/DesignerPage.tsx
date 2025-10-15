@@ -4,9 +4,12 @@ import { ImageUploader } from '../components/ImageUploader';
 import { StyleSelector } from '../components/StyleSelector';
 import { ClimateSelector } from '../components/ClimateSelector';
 import { ResultDisplay } from '../components/ResultDisplay';
+import { UpgradeModal } from '../components/UpgradeModal';
+import { UsageDisplay } from '../components/UsageDisplay';
 import { redesignOutdoorSpace, refineRedesign, getElementImage } from '../services/geminiService';
 import { convertImageToBase64 } from '../services/cloudinaryService';
 import { saveProject, saveRedesignResult } from '../services/projectService';
+import { checkRedesignLimit, checkRateLimit, incrementRedesignCount, incrementRateLimit } from '../services/usageService';
 import { LANDSCAPING_STYLES } from '../constants';
 import type { LandscapingStyle, ImageFile, DesignCatalog, RefinementModifications, RedesignDensity, Feature } from '../types';
 import { useApp } from '../contexts/AppContext';
@@ -80,7 +83,30 @@ export const DesignerPage: React.FC = () => {
   const [layoutOverlayImage, setLayoutOverlayImage] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Usage tracking state
+  const [usageStatus, setUsageStatus] = useState({
+    canRedesign: true,
+    redesignCount: 0,
+    remainingRedesigns: 3,
+    isSubscribed: false
+  });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check usage limits on component mount and user change
+  useEffect(() => {
+    const checkUsage = async () => {
+      try {
+        const status = await checkRedesignLimit(user?.id, false); // TODO: Check actual subscription status
+        setUsageStatus(status);
+      } catch (error) {
+        console.error('Failed to check usage limits:', error);
+      }
+    };
+
+    checkUsage();
+  }, [user?.id]);
 
   // Persist state to localStorage whenever it changes
   useEffect(() => {
@@ -145,8 +171,29 @@ export const DesignerPage: React.FC = () => {
       return;
     }
 
-    if (!user) {
-      setError("Please sign in to generate redesigns.");
+    // Check usage limits
+    try {
+      const currentUsage = await checkRedesignLimit(user?.id, usageStatus.isSubscribed);
+      setUsageStatus(currentUsage);
+      
+      if (!currentUsage.canRedesign) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    } catch (error) {
+      setError("Failed to check usage limits. Please try again.");
+      return;
+    }
+
+    // Check rate limits
+    try {
+      const rateCheck = await checkRateLimit(user?.id, 'redesign');
+      if (!rateCheck.allowed) {
+        setError("Too many requests. Please wait a moment before trying again.");
+        return;
+      }
+    } catch (error) {
+      setError("Rate limit check failed. Please try again.");
       return;
     }
 
@@ -158,15 +205,20 @@ export const DesignerPage: React.FC = () => {
     let projectId: string | null = null;
 
     try {
-      // Save project to Convex first
-      projectId = await saveProject({
-        userId: user.id,
-        originalImage: originalImage,
-        styles: selectedStyles,
-        allowStructuralChanges,
-        climateZone,
-        redesignDensity
-      });
+      // Increment rate limit counter
+      await incrementRateLimit(user?.id, 'redesign');
+
+      // Save project to Convex first (only for authenticated users)
+      if (user) {
+        projectId = await saveProject({
+          userId: user.id,
+          originalImage: originalImage,
+          styles: selectedStyles,
+          allowStructuralChanges,
+          climateZone,
+          redesignDensity
+        });
+      }
 
       // Convert Cloudinary URL to base64 if needed
       let imageBase64 = originalImage.base64;
@@ -189,8 +241,17 @@ export const DesignerPage: React.FC = () => {
         layoutOverlayImage
       );
 
-      // Save redesign result to Cloudinary and update project
-      await saveRedesignResult(projectId, result);
+      // Increment usage count after successful generation
+      await incrementRedesignCount(user?.id, usageStatus.isSubscribed);
+      
+      // Update local usage status
+      const updatedUsage = await checkRedesignLimit(user?.id, usageStatus.isSubscribed);
+      setUsageStatus(updatedUsage);
+
+      // Save redesign result to Cloudinary and update project (authenticated users only)
+      if (projectId) {
+        await saveRedesignResult(projectId, result);
+      }
       
       // Save to local history for backward compatibility
       await saveNewRedesign({
@@ -380,10 +441,19 @@ export const DesignerPage: React.FC = () => {
             <DensitySelector value={redesignDensity} onChange={(val) => updateState({ redesignDensity: val })} />
         </Section>
         
+        {/* Usage Display */}
+        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+          <UsageDisplay
+            redesignCount={usageStatus.redesignCount}
+            remainingRedesigns={usageStatus.remainingRedesigns}
+            isSubscribed={usageStatus.isSubscribed}
+          />
+        </div>
+        
         <div>
             <button
               onClick={handleGenerateRedesign}
-              disabled={!originalImage || isLoading}
+              disabled={!originalImage || isLoading || !usageStatus.canRedesign}
               className="w-full h-11 bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-300 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md hover:shadow-lg disabled:shadow-none"
             >
               {isLoading ? (
@@ -394,6 +464,8 @@ export const DesignerPage: React.FC = () => {
                   </svg>
                   {redesignedImage ? 'Refining...' : 'Redesigning...'}
                 </>
+              ) : !usageStatus.canRedesign ? (
+                'Upgrade to Continue'
               ) : (
                 'Generate Redesign'
               )}
@@ -442,6 +514,13 @@ export const DesignerPage: React.FC = () => {
             onSave={drawingOnSave}
         />
       )}
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        redesignCount={usageStatus.redesignCount}
+        remainingRedesigns={usageStatus.remainingRedesigns}
+      />
     </div>
   );
 };

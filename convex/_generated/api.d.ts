@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as projects from "../projects.js";
+import type * as usage from "../usage.js";
+
 import type {
   ApiFromModules,
   FilterApi,
@@ -22,7 +25,10 @@ import type {
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  projects: typeof projects;
+  usage: typeof usage;
+}>;
 declare const fullApiWithMounts: typeof fullApi;
 
 export declare const api: FilterApi<
