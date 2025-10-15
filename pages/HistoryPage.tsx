@@ -1,23 +1,61 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { useQuery } from 'convex/react';
+import { api } from '../convex/_generated/api';
 import { HistoryCard } from '../components/HistoryCard';
 import { ConfirmationModal } from '../components/ConfirmationModal';
+import { toggleProjectPin, deleteProject } from '../services/projectService';
 import type { HistoryItem, LandscapingStyle } from '../types';
 import { SlidersHorizontal, Search, Trash2, List, LayoutGrid, ChevronsUpDown, Filter, X } from 'lucide-react';
 import { LANDSCAPING_STYLES } from '../constants';
 import { useHistory } from '../contexts/HistoryContext';
 
 interface HistoryPageProps {
-  historyItems: HistoryItem[];
-  onView: (item: HistoryItem) => void;
-  onPin: (id: string) => void;
-  onDelete: (id: string) => void;
+  historyItems?: HistoryItem[];
+  onView?: (item: HistoryItem) => void;
+  onPin?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 type SortOption = 'default' | 'date-desc' | 'date-asc' | 'name-asc';
 type DateFilterOption = 'all' | '7d' | '30d';
 
-export const HistoryPage: React.FC<HistoryPageProps> = ({ historyItems, onView, onPin, onDelete }) => {
+export const HistoryPage: React.FC<HistoryPageProps> = ({ historyItems: legacyItems, onView, onPin, onDelete }) => {
+  const { user } = useUser();
   const { deleteMultipleItems } = useHistory();
+  
+  // Fetch user projects from Convex
+  const convexProjects = useQuery(api.projects.getUserProjects, 
+    user ? { userId: user.id } : "skip"
+  );
+
+  // Convert Convex projects to HistoryItem format
+  const historyItems = useMemo(() => {
+    if (!convexProjects) return legacyItems || [];
+    
+    return convexProjects.map(project => ({
+      id: project._id,
+      timestamp: project.createdAt,
+      originalImageId: project.originalImagePublicId,
+      redesignedImageId: project.redesignedImagePublicId || '',
+      styles: project.styles as LandscapingStyle[],
+      climateZone: project.climateZone,
+      isPinned: project.isPinned || false,
+      originalImageUrl: project.originalImageUrl,
+      redesignedImageUrl: project.redesignedImageUrl
+    }));
+  }, [convexProjects, legacyItems]);
+
+  const handlePin = async (id: string) => {
+    const item = historyItems.find(h => h.id === id);
+    if (item) {
+      await toggleProjectPin(id, !item.isPinned);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteProject(id);
+  };
 
   const [unpinModalState, setUnpinModalState] = useState({ isOpen: false, itemId: null as string | null });
   const [deleteModalState, setDeleteModalState] = useState({ isOpen: false });
@@ -180,7 +218,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ historyItems, onView, 
           ) : filteredAndSortedItems.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-200/80"><Search className="mx-auto h-16 w-16 text-slate-300" strokeWidth={1} /><h3 className="mt-4 text-xl font-medium text-slate-700">No Projects Found</h3><p className="mt-1 text-sm text-slate-500">Your search and filter criteria did not match any projects.</p></div>
           ) : (
-            <div className={containerClasses}>{filteredAndSortedItems.map(item => <HistoryCard key={item.id} item={item} onView={onView} onPin={onPin} onAttemptUnpin={handleAttemptUnpin} onDelete={onDelete} isSelectionMode={isSelectionMode} isSelected={selectedItemIds.includes(item.id)} onToggleSelection={handleToggleItemSelection} viewMode={viewMode}/>)}</div>
+            <div className={containerClasses}>{filteredAndSortedItems.map(item => <HistoryCard key={item.id} item={item} onView={onView} onPin={handlePin} onAttemptUnpin={handleAttemptUnpin} onDelete={handleDelete} isSelectionMode={isSelectionMode} isSelected={selectedItemIds.includes(item.id)} onToggleSelection={handleToggleItemSelection} viewMode={viewMode}/>)}</div>
           )}
         </main>
       </div>

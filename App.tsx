@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { ClerkProvider, useUser } from '@clerk/clerk-react';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { Header } from './components/Header';
 import { Modal } from './components/Modal';
 import { DesignerPage } from './pages/DesignerPage';
@@ -19,6 +20,8 @@ import { HistoryProvider, useHistory } from './contexts/HistoryContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { Footer } from './components/Footer';
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
 
 const PageContent: React.FC = () => {
   const { page, isModalOpen, modalImage, closeModal, navigateTo } = useApp();
@@ -81,13 +84,15 @@ const App: React.FC = () => {
 
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <ToastProvider>
-        <AppProvider>
-          <HistoryProvider>
-            <PageContent />
-          </HistoryProvider>
-        </AppProvider>
-      </ToastProvider>
+      <ConvexProvider client={convex}>
+        <ToastProvider>
+          <AppProvider>
+            <HistoryProvider>
+              <PageContent />
+            </HistoryProvider>
+          </AppProvider>
+        </ToastProvider>
+      </ConvexProvider>
     </ClerkProvider>
   );
 };

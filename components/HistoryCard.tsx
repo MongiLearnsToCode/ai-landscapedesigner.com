@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import type { HistoryItem } from '../types';
 import { Pin, Trash2, Eye } from 'lucide-react';
 import { ImageWithLoader } from './ImageWithLoader';
+import { getThumbnailUrl } from '../services/cloudinaryService';
 import * as imageDB from '../services/imageDB';
 import { LANDSCAPING_STYLES } from '../constants';
 
 interface HistoryCardProps {
   item: HistoryItem;
-  onView: (item: HistoryItem) => void;
+  onView?: (item: HistoryItem) => void;
   onPin: (id: string) => void;
   onAttemptUnpin: (id: string) => void;
   onDelete: (id: string) => void;
@@ -24,14 +25,19 @@ export const HistoryCard: React.FC<HistoryCardProps> = ({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    imageDB.getImage(item.redesignedImageInfo.id).then(imageData => {
-        if (isMounted && imageData) {
-            setImageUrl(`data:${imageData.type};base64,${imageData.base64}`);
-        }
-    }).catch(console.error);
-    return () => { isMounted = false; };
-  }, [item.redesignedImageInfo.id]);
+    // Use Cloudinary URL if available, otherwise fall back to IndexedDB
+    if (item.redesignedImageUrl) {
+      setImageUrl(getThumbnailUrl(item.redesignedImageId || ''));
+    } else if (item.redesignedImageInfo?.id) {
+      let isMounted = true;
+      imageDB.getImage(item.redesignedImageInfo.id).then(imageData => {
+          if (isMounted && imageData) {
+              setImageUrl(`data:${imageData.type};base64,${imageData.base64}`);
+          }
+      }).catch(console.error);
+      return () => { isMounted = false; };
+    }
+  }, [item.redesignedImageUrl, item.redesignedImageId, item.redesignedImageInfo?.id]);
 
   const styleNames = item.styles.map(styleId => LANDSCAPING_STYLES.find(s => s.id === styleId)?.name || styleId).join(' & ');
     

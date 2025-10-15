@@ -38,13 +38,18 @@ export interface DesignCatalog {
 // Represents the metadata stored in localStorage (without large image data)
 export interface HistoryItem {
     id: string;
-    designCatalog: DesignCatalog;
+    designCatalog?: DesignCatalog;
     styles: LandscapingStyle[];
     climateZone: string;
     timestamp: number;
     isPinned: boolean;
-    originalImageInfo: { id: string; name: string; type: string };
-    redesignedImageInfo: { id: string; type: string };
+    originalImageInfo?: { id: string; name: string; type: string };
+    redesignedImageInfo?: { id: string; type: string };
+    // New Cloudinary fields
+    originalImageUrl?: string;
+    originalImageId?: string;
+    redesignedImageUrl?: string;
+    redesignedImageId?: string;
 }
 
 // Represents a fully loaded history item, with image data fetched from IndexedDB

@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
 import { ImageUploader } from '../components/ImageUploader';
 import { StyleSelector } from '../components/StyleSelector';
 import { ClimateSelector } from '../components/ClimateSelector';
 import { ResultDisplay } from '../components/ResultDisplay';
 import { redesignOutdoorSpace, refineRedesign, getElementImage } from '../services/geminiService';
 import { convertImageToBase64 } from '../services/cloudinaryService';
+import { saveProject, saveRedesignResult } from '../services/projectService';
 import { LANDSCAPING_STYLES } from '../constants';
 import type { LandscapingStyle, ImageFile, DesignCatalog, RefinementModifications, RedesignDensity, Feature } from '../types';
 import { useApp } from '../contexts/AppContext';
@@ -59,6 +61,7 @@ const getInitialState = (): DesignerState => {
 };
 
 export const DesignerPage: React.FC = () => {
+  const { user } = useUser();
   const { itemToLoad, onItemLoaded } = useApp();
   const { saveNewRedesign, history, viewFromHistory } = useHistory();
   const { addToast } = useToast();
@@ -142,12 +145,29 @@ export const DesignerPage: React.FC = () => {
       return;
     }
 
+    if (!user) {
+      setError("Please sign in to generate redesigns.");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setRedesignedImage(null);
     setDesignCatalog(null);
 
+    let projectId: string | null = null;
+
     try {
+      // Save project to Convex first
+      projectId = await saveProject({
+        userId: user.id,
+        originalImage: originalImage,
+        styles: selectedStyles,
+        allowStructuralChanges,
+        climateZone,
+        redesignDensity
+      });
+
       // Convert Cloudinary URL to base64 if needed
       let imageBase64 = originalImage.base64;
       let imageMimeType = originalImage.type;
@@ -168,7 +188,11 @@ export const DesignerPage: React.FC = () => {
         redesignDensity,
         layoutOverlayImage
       );
+
+      // Save redesign result to Cloudinary and update project
+      await saveRedesignResult(projectId, result);
       
+      // Save to local history for backward compatibility
       await saveNewRedesign({
         originalImage: originalImage,
         redesignedImage: { base64: result.base64ImageBytes, type: result.mimeType },

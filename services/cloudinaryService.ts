@@ -30,6 +30,29 @@ export const uploadToCloudinary = async (file: File): Promise<CloudinaryUploadRe
   return response.json();
 };
 
+export const uploadBase64ToCloudinary = async (base64Data: string, mimeType: string, folder = 'ai-landscape-designer'): Promise<CloudinaryUploadResult> => {
+  const dataUrl = `data:${mimeType};base64,${base64Data}`;
+  
+  const formData = new FormData();
+  formData.append('file', dataUrl);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  formData.append('folder', folder);
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to upload base64 image to Cloudinary');
+  }
+
+  return response.json();
+};
+
 export const getOptimizedImageUrl = (publicId: string, options: {
   width?: number;
   height?: number;
