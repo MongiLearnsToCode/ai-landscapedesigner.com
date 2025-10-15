@@ -8,8 +8,8 @@ const MAX_ATTEMPTS_PER_WINDOW = 5;
 export const checkRedesignLimit = query({
   args: { 
     userId: v.string(),
-    deviceId: v.string(),
-    deviceFingerprint: v.string(),
+    deviceId: v.optional(v.string()),
+    deviceFingerprint: v.optional(v.string()),
     isAuthenticated: v.boolean(),
     isSubscribed: v.optional(v.boolean())
   },
@@ -36,21 +36,31 @@ export const checkRedesignLimit = query({
     }
 
     // For anonymous users, check device-based limits
-    const similarSessions = await ctx.db
-      .query("deviceSessions")
-      .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
-      .collect();
+    if (args.deviceFingerprint) {
+      const similarSessions = await ctx.db
+        .query("deviceSessions")
+        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
+        .collect();
 
-    // Aggregate redesign count from all similar sessions
-    const totalRedesigns = similarSessions.reduce((sum, session) => sum + session.redesignCount, 0);
+      // Aggregate redesign count from all similar sessions
+      const totalRedesigns = similarSessions.reduce((sum, session) => sum + session.redesignCount, 0);
 
-    const canRedesign = totalRedesigns < FREE_REDESIGN_LIMIT;
-    const remainingRedesigns = Math.max(0, FREE_REDESIGN_LIMIT - totalRedesigns);
+      const canRedesign = totalRedesigns < FREE_REDESIGN_LIMIT;
+      const remainingRedesigns = Math.max(0, FREE_REDESIGN_LIMIT - totalRedesigns);
 
+      return {
+        canRedesign,
+        redesignCount: totalRedesigns,
+        remainingRedesigns,
+        isSubscribed: false
+      };
+    }
+
+    // Default for new users
     return {
-      canRedesign,
-      redesignCount: totalRedesigns,
-      remainingRedesigns,
+      canRedesign: true,
+      redesignCount: 0,
+      remainingRedesigns: FREE_REDESIGN_LIMIT,
       isSubscribed: false
     };
   },

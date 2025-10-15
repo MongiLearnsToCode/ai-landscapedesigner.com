@@ -20,12 +20,22 @@ export const getUserId = (clerkUserId?: string): string => {
 
 // Get client info for server tracking
 const getClientInfo = () => {
-  return {
-    deviceId: getDeviceId(),
-    deviceFingerprint: getExtendedFingerprint(),
-    ipAddress: undefined, // Will be detected server-side if needed
-    userAgent: navigator.userAgent
-  };
+  try {
+    return {
+      deviceId: getDeviceId(),
+      deviceFingerprint: getExtendedFingerprint(),
+      ipAddress: undefined, // Will be detected server-side if needed
+      userAgent: navigator.userAgent
+    };
+  } catch (error) {
+    console.warn('Failed to generate device fingerprint:', error);
+    return {
+      deviceId: undefined,
+      deviceFingerprint: undefined,
+      ipAddress: undefined,
+      userAgent: navigator.userAgent
+    };
+  }
 };
 
 export interface UsageStatus {
@@ -43,20 +53,28 @@ export const checkRedesignLimit = async (
   const isAuthenticated = !!clerkUserId;
   const clientInfo = getClientInfo();
 
-  // Update device session for tracking
-  if (!isAuthenticated) {
-    await convex.mutation(api.usage.updateDeviceSession, {
-      userId,
-      isAuthenticated,
-      ...clientInfo
-    });
+  // Update device session for tracking (only for anonymous users with valid device info)
+  if (!isAuthenticated && clientInfo.deviceId && clientInfo.deviceFingerprint) {
+    try {
+      await convex.mutation(api.usage.updateDeviceSession, {
+        userId,
+        isAuthenticated,
+        deviceId: clientInfo.deviceId,
+        deviceFingerprint: clientInfo.deviceFingerprint,
+        ipAddress: clientInfo.ipAddress,
+        userAgent: clientInfo.userAgent
+      });
+    } catch (error) {
+      console.warn('Failed to update device session:', error);
+    }
   }
 
   return await convex.query(api.usage.checkRedesignLimit, {
     userId,
     isAuthenticated,
     isSubscribed,
-    ...clientInfo
+    deviceId: clientInfo.deviceId,
+    deviceFingerprint: clientInfo.deviceFingerprint
   });
 };
 
