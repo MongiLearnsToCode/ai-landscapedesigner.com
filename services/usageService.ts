@@ -43,6 +43,15 @@ export const checkRedesignLimit = async (
   const isAuthenticated = !!clerkUserId;
   const clientInfo = getClientInfo();
 
+  // Update device session for tracking
+  if (!isAuthenticated) {
+    await convex.mutation(api.usage.updateDeviceSession, {
+      userId,
+      isAuthenticated,
+      ...clientInfo
+    });
+  }
+
   return await convex.query(api.usage.checkRedesignLimit, {
     userId,
     isAuthenticated,

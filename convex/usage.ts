@@ -11,13 +11,9 @@ export const checkRedesignLimit = query({
     deviceId: v.string(),
     deviceFingerprint: v.string(),
     isAuthenticated: v.boolean(),
-    isSubscribed: v.optional(v.boolean()),
-    ipAddress: v.optional(v.string()),
-    userAgent: v.optional(v.string())
+    isSubscribed: v.optional(v.boolean())
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    
     // For authenticated users, check their usage
     if (args.isAuthenticated) {
       const usage = await ctx.db
@@ -40,21 +36,6 @@ export const checkRedesignLimit = query({
     }
 
     // For anonymous users, check device-based limits
-    // First check by device ID
-    let deviceSession = await ctx.db
-      .query("deviceSessions")
-      .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
-      .first();
-
-    // If no device session, check by fingerprint (in case device ID was cleared)
-    if (!deviceSession) {
-      deviceSession = await ctx.db
-        .query("deviceSessions")
-        .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
-        .first();
-    }
-
-    // Check for similar fingerprints (potential evasion attempts)
     const similarSessions = await ctx.db
       .query("deviceSessions")
       .withIndex("by_fingerprint", (q) => q.eq("deviceFingerprint", args.deviceFingerprint))
@@ -66,11 +47,36 @@ export const checkRedesignLimit = query({
     const canRedesign = totalRedesigns < FREE_REDESIGN_LIMIT;
     const remainingRedesigns = Math.max(0, FREE_REDESIGN_LIMIT - totalRedesigns);
 
-    // Update or create device session
+    return {
+      canRedesign,
+      redesignCount: totalRedesigns,
+      remainingRedesigns,
+      isSubscribed: false
+    };
+  },
+});
+
+export const updateDeviceSession = mutation({
+  args: {
+    deviceId: v.string(),
+    deviceFingerprint: v.string(),
+    userId: v.string(),
+    isAuthenticated: v.boolean(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    
+    let deviceSession = await ctx.db
+      .query("deviceSessions")
+      .withIndex("by_device", (q) => q.eq("deviceId", args.deviceId))
+      .first();
+
     if (deviceSession) {
       await ctx.db.patch(deviceSession._id, {
         lastSeenAt: now,
-        deviceId: args.deviceId, // Update in case it changed
+        deviceId: args.deviceId,
         ipAddress: args.ipAddress,
         userAgent: args.userAgent
       });
@@ -80,7 +86,7 @@ export const checkRedesignLimit = query({
         deviceFingerprint: args.deviceFingerprint,
         userId: args.userId,
         isAuthenticated: args.isAuthenticated,
-        redesignCount: totalRedesigns,
+        redesignCount: 0,
         ipAddress: args.ipAddress,
         userAgent: args.userAgent,
         lastSeenAt: now,
@@ -88,12 +94,7 @@ export const checkRedesignLimit = query({
       });
     }
 
-    return {
-      canRedesign,
-      redesignCount: totalRedesigns,
-      remainingRedesigns,
-      isSubscribed: false
-    };
+    return { success: true };
   },
 });
 

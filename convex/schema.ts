@@ -30,8 +30,8 @@ export default defineSchema({
 
   usageTracking: defineTable({
     userId: v.string(), // Clerk user ID or anonymous session ID
-    deviceId: v.string(), // Device fingerprint
-    deviceFingerprint: v.string(), // Extended fingerprint for verification
+    deviceId: v.optional(v.string()), // Device fingerprint
+    deviceFingerprint: v.optional(v.string()), // Extended fingerprint for verification
     isAuthenticated: v.boolean(),
     redesignCount: v.number(),
     lastRedesignAt: v.optional(v.number()),
