@@ -28,6 +28,16 @@ export default defineSchema({
     updatedAt: v.number()
   }).index("by_user", ["userId"]).index("by_user_created", ["userId", "createdAt"]),
 
+  subscriptions: defineTable({
+    userId: v.string(),
+    polarSubscriptionId: v.string(),
+    status: v.string(),
+    planName: v.string(),
+    currentPeriodEnd: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number()
+  }).index("by_user", ["userId"]).index("by_polar_id", ["polarSubscriptionId"]),
+
   usageTracking: defineTable({
     userId: v.string(), // Clerk user ID or anonymous session ID
     deviceId: v.optional(v.string()), // Device fingerprint

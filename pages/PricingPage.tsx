@@ -1,4 +1,7 @@
 import React, { useState, forwardRef, useRef, useEffect, useCallback } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { useToast } from '../contexts/ToastContext';
+import { createCheckoutSession } from '../services/polarService';
 import type { Page } from '../contexts/AppContext';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -19,9 +22,11 @@ interface PlanCardProps {
   cta: string;
   isPopular?: boolean;
   ribbonText?: string;
+  onSubscribe?: () => void;
+  isLoading?: boolean;
 }
 
-const PlanCard = forwardRef<HTMLDivElement, PlanCardProps>(({ plan, price, pricePer, monthlyBreakdown, savings, description, features, cta, isPopular, ribbonText }, ref) => {
+const PlanCard = forwardRef<HTMLDivElement, PlanCardProps>(({ plan, price, pricePer, monthlyBreakdown, savings, description, features, cta, isPopular, ribbonText, onSubscribe, isLoading }, ref) => {
   const cardClasses = isPopular
     ? 'border-orange-500 border-2 transform md:scale-105 shadow-lg'
     : 'border-slate-200/80 border';
@@ -60,20 +65,52 @@ const PlanCard = forwardRef<HTMLDivElement, PlanCardProps>(({ plan, price, price
         ))}
       </ul>
       
-      <a href="#" className={`w-full h-11 mt-8 flex items-center justify-center text-center font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg ${buttonClasses}`}>
-        {cta}
-      </a>
+      <button 
+        onClick={onSubscribe}
+        disabled={isLoading}
+        className={`w-full h-11 mt-8 flex items-center justify-center text-center font-semibold py-3 px-4 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg ${buttonClasses} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {isLoading ? 'Processing...' : cta}
+      </button>
     </div>
   );
 });
 
 
 export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
+  const { user } = useUser();
+  const { addToast } = useToast();
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const popularCardRef = useRef<HTMLDivElement>(null);
 
   const [scrollState, setScrollState] = useState({ canScrollLeft: false, canScrollRight: false, isTabletPortrait: false });
+
+  const handleSubscribe = async (planName: string) => {
+    if (!user) {
+      addToast('Please sign in to subscribe', 'error');
+      return;
+    }
+
+    setLoadingPlan(planName);
+    
+    try {
+      const checkoutUrl = await createCheckoutSession(
+        planName,
+        user.id,
+        user.primaryEmailAddress?.emailAddress || ''
+      );
+      
+      // Redirect to Polar checkout
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error('Checkout failed:', error);
+      addToast('Failed to start checkout process', 'error');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
 
   const handleScroll = useCallback(() => {
     if (!containerRef.current) return;
@@ -217,6 +254,8 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                 description="For casual users or hobbyists."
                 features={["50 redesigns per month", ...commonFeatures]}
                 cta="Get Personal"
+                onSubscribe={() => handleSubscribe('Personal')}
+                isLoading={loadingPlan === 'Personal'}
             />
             <PlanCard 
                 ref={popularCardRef}
@@ -230,6 +269,8 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                 cta="Choose Creator"
                 isPopular={true}
                 ribbonText={billingCycle === 'annual' ? 'Best Value' : 'Most Popular'}
+                onSubscribe={() => handleSubscribe('Creator')}
+                isLoading={loadingPlan === 'Creator'}
             />
             <PlanCard 
                 plan="Business"
@@ -240,6 +281,8 @@ export const PricingPage: React.FC<PricingPageProps> = ({ onNavigate }) => {
                 description="For teams, agencies & power users."
                 features={["Unlimited redesigns*", ...commonFeatures, "Priority support"]}
                 cta="Go Business"
+                onSubscribe={() => handleSubscribe('Business')}
+                isLoading={loadingPlan === 'Business'}
             />
           </div>
         </div>
