@@ -9,10 +9,7 @@ import { PricingPage } from './pages/PricingPage';
 import { ContactPage } from './pages/ContactPage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
-import { SignInPage } from './pages/SignInPage';
-import { SignUpPage } from './pages/SignUpPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { FairUsePolicyPage } from './pages/FairUsePolicyPage';
 import { SuccessPage } from './pages/SuccessPage';
 import { AppProvider, useApp } from './contexts/AppContext';
@@ -38,10 +35,10 @@ const PageContent: React.FC = () => {
     document.title = `${baseTitle} | ${pageTitle}`;
   }, [page]);
 
-  // Protected Routes Logic
+  // Protected Routes Logic - redirect to main if not signed in
   useEffect(() => {
     if (!isSignedIn && (page === 'history' || page === 'profile')) {
-      navigateTo('signin');
+      navigateTo('main');
     }
   }, [isSignedIn, page, navigateTo]);
   
@@ -52,10 +49,7 @@ const PageContent: React.FC = () => {
     contact: <ContactPage />,
     terms: <TermsPage />,
     privacy: <PrivacyPage />,
-    signin: <SignInPage />,
-    signup: <SignUpPage />,
     profile: isSignedIn ? <ProfilePage /> : null,
-    'reset-password': <ResetPasswordPage />,
     fairuse: <FairUsePolicyPage />,
     success: <SuccessPage />,
   };

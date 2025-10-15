@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import type { HydratedHistoryItem, User } from '../types';
+import type { HydratedHistoryItem } from '../types';
 
-export type Page = 'main' | 'history' | 'pricing' | 'contact' | 'terms' | 'privacy' | 'signin' | 'signup' | 'profile' | 'reset-password' | 'fairuse' | 'success';
+export type Page = 'main' | 'history' | 'pricing' | 'contact' | 'terms' | 'privacy' | 'profile' | 'fairuse' | 'success';
 
 interface AppContextType {
   page: Page;
