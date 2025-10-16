@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkProvider } from '@clerk/clerk-react';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { AppProvider } from '../contexts/AppContext';
 import { HistoryProvider } from '../contexts/HistoryContext';
