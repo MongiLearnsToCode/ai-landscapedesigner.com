@@ -2,7 +2,7 @@ import { ConvexReactClient } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { createCheckoutSession, getProducts, type PolarProduct } from "./polarService";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export const getUserSubscription = async (userId: string) => {
   return await convex.query(api.subscriptions.getUserSubscription, { userId });

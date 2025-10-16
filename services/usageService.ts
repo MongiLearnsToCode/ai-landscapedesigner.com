@@ -2,7 +2,7 @@ import { ConvexReactClient } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { getDeviceId, getExtendedFingerprint } from "./fingerprintService";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 // Generate anonymous session ID for unauthenticated users
 export const getAnonymousUserId = (): string => {
