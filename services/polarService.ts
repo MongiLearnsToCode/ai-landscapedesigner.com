@@ -1,18 +1,18 @@
 import { Polar } from '@polar-sh/sdk';
 
 const polar = new Polar({
-  accessToken: import.meta.env.VITE_POLAR_ACCESS_TOKEN,
+  accessToken: process.env.NEXT_PUBLIC_POLAR_ACCESS_TOKEN!,
   server: 'sandbox'
 });
 
 const getPriceId = (planName: string, billingCycle: 'monthly' | 'annual'): string => {
-  const envKey = `VITE_POLAR_${planName.toUpperCase()}_${billingCycle.toUpperCase()}_PRICE_ID`;
-  const priceId = import.meta.env[envKey];
-  
+  const envKey = `NEXT_PUBLIC_POLAR_${planName.toUpperCase()}_${billingCycle.toUpperCase()}_PRICE_ID`;
+  const priceId = process.env[envKey];
+
   if (!priceId) {
     throw new Error(`Price ID not found for ${planName} ${billingCycle}. Check environment variable: ${envKey}`);
   }
-  
+
   return priceId;
 };
 
@@ -24,7 +24,7 @@ export const createCheckoutSession = async (
 ): Promise<string> => {
   try {
     const baseUrl = window.location.origin;
-    const successUrl = `${baseUrl}/?page=success&session_id={CHECKOUT_SESSION_ID}&plan=${planName}`;
+    const successUrl = `${baseUrl}${process.env.NEXT_PUBLIC_POLAR_SUCCESS_URL}&plan=${planName}`;
     const cancelUrl = `${baseUrl}/?page=pricing`;
 
     const priceId = getPriceId(planName, billingCycle);
@@ -56,7 +56,7 @@ export const handleSuccessfulPayment = async (
   const { ConvexReactClient } = await import('convex/react');
   const { api } = await import('../convex/_generated/api');
   
-  const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+  const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   
   await convex.mutation(api.subscriptions.createSubscription, {
     userId,

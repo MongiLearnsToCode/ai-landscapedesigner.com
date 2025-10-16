@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import type { HydratedHistoryItem } from '../types';
 
 export type Page = 'main' | 'history' | 'pricing' | 'contact' | 'terms' | 'privacy' | 'profile' | 'fairuse' | 'success';
@@ -20,16 +21,35 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const router = useRouter();
   const [page, setPage] = useState<Page>('main');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [itemToLoad, setItemToLoad] = useState<HydratedHistoryItem | null>(null);
   const [shouldTriggerConfetti, setShouldTriggerConfetti] = useState<boolean>(false);
-  
+
+  useEffect(() => {
+    const pageFromUrl = router.query.page as Page;
+    if (pageFromUrl) {
+      setPage(pageFromUrl);
+    } else if (router.pathname === '/') {
+      setPage('main');
+    } else if (router.pathname === '/history') {
+      setPage('history');
+    } // Add other mappings as needed
+  }, [router.query.page, router.pathname]);
+
   const navigateTo = (page: Page, options?: { triggerConfetti?: boolean }) => {
     setPage(page);
     if (options?.triggerConfetti) {
       setShouldTriggerConfetti(true);
+    }
+    if (page === 'main') {
+      router.push('/');
+    } else if (page === 'history') {
+      router.push('/history');
+    } else {
+      router.push(`/?page=${page}`);
     }
     window.scrollTo(0, 0);
   };
