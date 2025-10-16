@@ -3,9 +3,9 @@ import { GoogleGenAI, Modality, Type } from "@google/genai";
 import type { LandscapingStyle, DesignCatalog, RefinementModifications, RedesignDensity } from '../types';
 import { LANDSCAPING_STYLES } from '../constants';
 
-// Per coding guidelines, the API key must be sourced from `process.env.API_KEY`.
+// Per coding guidelines, the API key must be sourced from `process.env.NEXT_PUBLIC_GEMINI_API_KEY`.
 // This environment variable is assumed to be pre-configured and available.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
 
 // Per coding guidelines, use 'gemini-2.5-flash-image' for image editing tasks.
 const model = 'gemini-2.5-flash-image';
