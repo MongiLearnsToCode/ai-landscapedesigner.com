@@ -3,7 +3,7 @@ import { api } from "../convex/_generated/api";
 import { uploadBase64ToCloudinary } from "./cloudinaryService";
 import type { LandscapingStyle, DesignCatalog, RedesignDensity, ImageFile } from "../types";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export interface ProjectData {
   userId: string;

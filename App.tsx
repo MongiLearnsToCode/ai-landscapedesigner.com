@@ -18,7 +18,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { Footer } from './components/Footer';
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 const PageContent: React.FC = () => {
   const { page, isModalOpen, modalImage, closeModal, navigateTo } = useApp();
@@ -70,7 +70,7 @@ const PageContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   if (!publishableKey) {
     throw new Error('Missing Clerk Publishable Key');
